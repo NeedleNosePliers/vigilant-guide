@@ -18,35 +18,16 @@ public class Win32 {
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT { public int X; public int Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct MOUSEINPUT {
-        public int dx, dy;
-        public uint mouseData, dwFlags, time;
-        public IntPtr dwExtraInfo;
-    }
-    [StructLayout(LayoutKind.Sequential)]
-    public struct INPUT {
-        public uint type;
-        public MOUSEINPUT mi;
-    }
-    [DllImport("user32.dll")] public static extern uint SendInput(uint n, INPUT[] inp, int sz);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, int dx, int dy, uint data, int extra);
 }
 "@ -Language CSharp
 
 function Nudge {
     $p = New-Object Win32+POINT
     [Win32]::GetCursorPos([ref]$p) | Out-Null
-
-    $move = New-Object Win32+INPUT
-    $move.type = 0
-    $move.mi.dwFlags = 0x0001
-    $move.mi.dx = $NUDGE_PX
-    [Win32]::SendInput(1, @($move), [System.Runtime.InteropServices.Marshal]::SizeOf($move)) | Out-Null
-    Start-Sleep -Milliseconds 150
-    $move.mi.dx = -$NUDGE_PX
-    [Win32]::SendInput(1, @($move), [System.Runtime.InteropServices.Marshal]::SizeOf($move)) | Out-Null
-
+    [Win32]::mouse_event(1, $NUDGE_PX, 0, 0, 0)
+    Start-Sleep -Milliseconds 300
+    [Win32]::mouse_event(1, -$NUDGE_PX, 0, 0, 0)
     Write-Host ("[{0}]  nudge @ ({1}, {2})" -f (Get-Date -Format "HH:mm:ss"), $p.X, $p.Y) -ForegroundColor Cyan
 }
 
