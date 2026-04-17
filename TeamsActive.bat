@@ -9,7 +9,7 @@ del "%T%" 2>nul&exit /b
 # ============================================================
 
 $INTERVAL_SEC = 30
-$NUDGE_PX     = 50
+$NUDGE_PX     = 65
 
 Add-Type @"
 using System;
