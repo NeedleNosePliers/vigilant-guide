@@ -23,7 +23,7 @@ public class Win32 {
 }
 "@ -Language CSharp
 
-[Win32]::SetThreadExecutionState(0x80000003) | Out-Null
+[Win32]::SetThreadExecutionState([uint32]0x80000003) | Out-Null
 
 function Nudge {
     $p = New-Object Win32+POINT
@@ -59,6 +59,6 @@ while ($running) {
     }
 }
 
-[Win32]::SetThreadExecutionState(0x80000000) | Out-Null
+[Win32]::SetThreadExecutionState([uint32]0x80000000) | Out-Null
 
 Read-Host "`nAppuie sur Entree pour fermer"
