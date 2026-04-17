@@ -8,8 +8,8 @@ del "%T%" 2>nul&exit /b
 #  Ferme la fenetre pour forcer l'arret.
 # ============================================================
 
-$INTERVAL_SEC = 30
-$NUDGE_PX     = 65
+$INTERVAL_SEC = 20
+$NUDGE_PX     = 200
 
 Add-Type @"
 using System;

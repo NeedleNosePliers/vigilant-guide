@@ -1,8 +1,8 @@
 # Teams Active Keeper — bouge la souris toutes les 30 s
 # Appuie sur Q pour arreter. Ferme la fenetre pour forcer l'arret.
 
-$INTERVAL_SEC = 30
-$NUDGE_PX     = 50
+$INTERVAL_SEC = 20
+$NUDGE_PX     = 200
 
 Add-Type @"
 using System;
