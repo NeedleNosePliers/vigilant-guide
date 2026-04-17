@@ -18,7 +18,7 @@ public class Win32 {
 "@ -Language CSharp
 
 # Empeche la mise en veille tant que le script tourne
-[Win32]::SetThreadExecutionState([uint32]0x80000003) | Out-Null
+[Win32]::SetThreadExecutionState([Convert]::ToUInt32("80000003", 16)) | Out-Null
 
 function Nudge {
     $p = New-Object Win32+POINT
@@ -55,6 +55,6 @@ while ($running) {
 }
 
 # Restaure le comportement de veille normal
-[Win32]::SetThreadExecutionState([uint32]0x80000000) | Out-Null
+[Win32]::SetThreadExecutionState([Convert]::ToUInt32("80000000", 16)) | Out-Null
 
 Read-Host "`nAppuie sur Entree pour fermer"
