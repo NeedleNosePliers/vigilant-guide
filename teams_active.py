@@ -1,94 +1,123 @@
 #!/usr/bin/env python3
-"""Keep Teams status active by nudging the mouse at regular intervals.
-
-Controls:
-  Ctrl+Shift+S  - Start/resume nudging
-  Ctrl+Shift+X  - Stop nudging
-  Ctrl+Shift+Q  - Quit the script entirely
 """
+Teams Active Keeper
+───────────────────
+Bouge la souris discrètement pour que Teams ne passe pas en absent.
+Fichier unique — installe ses dépendances tout seul au premier lancement.
+
+Raccourcis :
+  Ctrl+Shift+S  démarrer / reprendre
+  Ctrl+Shift+X  pause
+  Ctrl+Shift+Q  quitter
+
+Urgence : glisser la souris dans le coin en haut-à-gauche de l'écran.
+"""
+
+import sys
+import subprocess
+import importlib
+import os
+
+# ── Auto-installation des dépendances ────────────────────────────────────────
+
+DEPS = {"pyautogui": "pyautogui", "keyboard": "keyboard"}
+
+def _install_deps():
+    missing = [pkg for mod, pkg in DEPS.items()
+               if importlib.util.find_spec(mod) is None]
+    if not missing:
+        return
+    print(f"Installation des dépendances ({', '.join(missing)})…")
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "install", "--quiet", "--user"] + missing
+    )
+    print("Dépendances installées. Relancement…\n")
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+_install_deps()
+
+# ── Programme principal ───────────────────────────────────────────────────────
 
 import time
 import threading
-import sys
+import pyautogui
+import keyboard
 
-try:
-    import pyautogui
-except ImportError:
-    sys.exit("Missing dependency: pip install pyautogui")
+INTERVAL  = 60   # secondes entre chaque nudge
+NUDGE_PX  = 5    # pixels de déplacement (retour immédiat)
 
-try:
-    import keyboard
-except ImportError:
-    sys.exit("Missing dependency: pip install keyboard")
+_active = threading.Event()
+_stop   = threading.Event()
 
-
-INTERVAL_SECONDS = 60   # how often to nudge (seconds)
-NUDGE_PIXELS = 5        # how far to move and return (pixels)
-
-_running = threading.Event()
-_quit = threading.Event()
+pyautogui.FAILSAFE = True   # coin haut-gauche = arrêt d'urgence
 
 
 def nudge():
-    """Move mouse slightly and return to original position."""
     x, y = pyautogui.position()
-    pyautogui.moveRel(NUDGE_PIXELS, 0, duration=0.1)
-    pyautogui.moveRel(-NUDGE_PIXELS, 0, duration=0.1)
-    print(f"[{time.strftime('%H:%M:%S')}] Nudged mouse at ({x}, {y})")
+    pyautogui.moveRel(NUDGE_PX, 0, duration=0.15)
+    pyautogui.moveRel(-NUDGE_PX, 0, duration=0.15)
+    print(f"[{time.strftime('%H:%M:%S')}]  nudge @ ({x}, {y})")
 
 
-def loop():
-    while not _quit.is_set():
-        if _running.is_set():
-            nudge()
-            # Sleep in small chunks so we respond to quit quickly
-            for _ in range(INTERVAL_SECONDS * 10):
-                if not _running.is_set() or _quit.is_set():
+def _loop():
+    while not _stop.is_set():
+        if _active.is_set():
+            try:
+                nudge()
+            except pyautogui.FailSafeException:
+                print("⚠  FailSafe déclenché — arrêt.")
+                _active.clear()
+                _stop.set()
+                break
+            # attente fractionnée pour réagir vite aux commandes
+            for _ in range(INTERVAL * 10):
+                if not _active.is_set() or _stop.is_set():
                     break
                 time.sleep(0.1)
         else:
             time.sleep(0.1)
 
 
-def on_start():
-    if not _running.is_set():
-        _running.set()
-        print(">> Started — mouse will nudge every", INTERVAL_SECONDS, "seconds")
+def _start():
+    if not _active.is_set():
+        _active.set()
+        print("▶  Actif — nudge toutes les", INTERVAL, "s")
 
+def _pause():
+    if _active.is_set():
+        _active.clear()
+        print("⏸  En pause")
 
-def on_stop():
-    if _running.is_set():
-        _running.clear()
-        print(">> Stopped")
-
-
-def on_quit():
-    _running.clear()
-    _quit.set()
-    print(">> Quitting…")
+def _quit():
+    _active.clear()
+    _stop.set()
+    print("⏹  Arrêt.")
 
 
 def main():
-    pyautogui.FAILSAFE = True  # move mouse to top-left corner to abort
+    keyboard.add_hotkey("ctrl+shift+s", _start)
+    keyboard.add_hotkey("ctrl+shift+x", _pause)
+    keyboard.add_hotkey("ctrl+shift+q", _quit)
 
-    keyboard.add_hotkey("ctrl+shift+s", on_start)
-    keyboard.add_hotkey("ctrl+shift+x", on_stop)
-    keyboard.add_hotkey("ctrl+shift+q", on_quit)
+    print(__doc__)
+    print(f"  Intervalle : {INTERVAL} s   |   Déplacement : {NUDGE_PX} px")
+    print("─" * 45)
 
-    print("Teams activity keeper ready.")
-    print("  Ctrl+Shift+S  start")
-    print("  Ctrl+Shift+X  stop")
-    print("  Ctrl+Shift+Q  quit")
-    print("  (move mouse to top-left corner for emergency stop)")
-    print()
+    _start()
 
-    on_start()  # start immediately
-
-    worker = threading.Thread(target=loop, daemon=True)
+    worker = threading.Thread(target=_loop, daemon=True)
     worker.start()
 
-    _quit.wait()
+    try:
+        _stop.wait()
+    except KeyboardInterrupt:
+        _quit()
+
     worker.join(timeout=2)
+
+    # Sur Windows, garde la fenêtre ouverte après une erreur
+    if sys.platform == "win32" and getattr(sys, "frozen", False):
+        input("\nAppuie sur Entrée pour fermer…")
 
 
 if __name__ == "__main__":
