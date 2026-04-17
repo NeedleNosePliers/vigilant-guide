@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Teams Active
+Comment=Empêche Teams de passer en absent
+Exec=bash -c 'DIR=$(dirname $(readlink -f %k)); x-terminal-emulator -e bash "$DIR/teams_active.sh"'
+Icon=input-mouse
+Terminal=false
+Categories=Utility;
