@@ -1,6 +1,6 @@
 @echo off
 set "F=%~f0"&set "T=%TEMP%\teams_active_%RANDOM%.ps1"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "gc $env:F|select -Skip 3|Set-Content $env:T -Encoding UTF8;&$env:T"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try{gc $env:F|select -Skip 4|Set-Content $env:T -Enc UTF8;&$env:T}catch{Write-Host $_ -F Red;Read-Host 'Erreur - appuie sur Entree'}"
 del "%T%" 2>nul&exit /b
 # ============================================================
 #  Teams Active Keeper  —  bouge la souris toutes les 60 s
