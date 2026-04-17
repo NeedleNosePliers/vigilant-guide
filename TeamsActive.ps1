@@ -12,8 +12,13 @@ public class Win32 {
     public struct POINT { public int X; public int Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    // ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
+    [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint esFlags);
 }
 "@ -Language CSharp
+
+# Empeche la mise en veille tant que le script tourne
+[Win32]::SetThreadExecutionState(0x80000003) | Out-Null
 
 function Nudge {
     $p = New-Object Win32+POINT
@@ -48,5 +53,8 @@ while ($running) {
         $elapsed += 0.2
     }
 }
+
+# Restaure le comportement de veille normal
+[Win32]::SetThreadExecutionState(0x80000000) | Out-Null
 
 Read-Host "`nAppuie sur Entree pour fermer"
