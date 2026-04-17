@@ -13,12 +13,12 @@ public class Win32 {
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     // ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
-    [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint esFlags);
+    [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(int esFlags);
 }
 "@ -Language CSharp
 
 # Empeche la mise en veille tant que le script tourne
-[Win32]::SetThreadExecutionState([Convert]::ToUInt32("80000003", 16)) | Out-Null
+[Win32]::SetThreadExecutionState(-2147483645) | Out-Null
 
 function Nudge {
     $p = New-Object Win32+POINT
@@ -55,6 +55,6 @@ while ($running) {
 }
 
 # Restaure le comportement de veille normal
-[Win32]::SetThreadExecutionState([Convert]::ToUInt32("80000000", 16)) | Out-Null
+[Win32]::SetThreadExecutionState([int]::MinValue) | Out-Null
 
 Read-Host "`nAppuie sur Entree pour fermer"
