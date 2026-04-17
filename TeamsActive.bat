@@ -3,7 +3,7 @@ set "F=%~f0"&set "T=%TEMP%\teams_active_%RANDOM%.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try{gc $env:F|select -Skip 4|Set-Content $env:T -Enc UTF8;&$env:T}catch{Write-Host $_ -F Red;Read-Host 'Erreur - appuie sur Entree'}"
 del "%T%" 2>nul&exit /b
 # ============================================================
-#  Teams Active Keeper  —  bouge la souris toutes les 30 s
+#  Teams Active Keeper  —  bouge la souris toutes les 20 s
 #  Appuie sur Q pour arreter proprement.
 #  Ferme la fenetre pour forcer l'arret.
 # ============================================================
@@ -18,19 +18,35 @@ public class Win32 {
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT { public int X; public int Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
-    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-    [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(int esFlags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT {
+        public int dx, dy;
+        public uint mouseData, dwFlags, time;
+        public IntPtr dwExtraInfo;
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT {
+        public uint type;
+        public MOUSEINPUT mi;
+    }
+    [DllImport("user32.dll")] public static extern uint SendInput(uint n, INPUT[] inp, int sz);
 }
 "@ -Language CSharp
-
-[Win32]::SetThreadExecutionState(-2147483645) | Out-Null
 
 function Nudge {
     $p = New-Object Win32+POINT
     [Win32]::GetCursorPos([ref]$p) | Out-Null
-    [Win32]::SetCursorPos($p.X + $NUDGE_PX, $p.Y) | Out-Null
+
+    $move = New-Object Win32+INPUT
+    $move.type = 0
+    $move.mi.dwFlags = 0x0001
+    $move.mi.dx = $NUDGE_PX
+    [Win32]::SendInput(1, @($move), [System.Runtime.InteropServices.Marshal]::SizeOf($move)) | Out-Null
     Start-Sleep -Milliseconds 150
-    [Win32]::SetCursorPos($p.X, $p.Y) | Out-Null
+    $move.mi.dx = -$NUDGE_PX
+    [Win32]::SendInput(1, @($move), [System.Runtime.InteropServices.Marshal]::SizeOf($move)) | Out-Null
+
     Write-Host ("[{0}]  nudge @ ({1}, {2})" -f (Get-Date -Format "HH:mm:ss"), $p.X, $p.Y) -ForegroundColor Cyan
 }
 
@@ -58,7 +74,5 @@ while ($running) {
         $elapsed += 0.2
     }
 }
-
-[Win32]::SetThreadExecutionState([int]::MinValue) | Out-Null
 
 Read-Host "`nAppuie sur Entree pour fermer"

@@ -1,4 +1,4 @@
-# Teams Active Keeper — bouge la souris toutes les 30 s
+# Teams Active Keeper — bouge la souris toutes les 20 s
 # Appuie sur Q pour arreter. Ferme la fenetre pour forcer l'arret.
 
 $INTERVAL_SEC = 20
@@ -11,21 +11,37 @@ public class Win32 {
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT { public int X; public int Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
-    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-    // ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
-    [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(int esFlags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT {
+        public int dx, dy;
+        public uint mouseData, dwFlags, time;
+        public IntPtr dwExtraInfo;
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT {
+        public uint type;
+        public MOUSEINPUT mi;
+    }
+    [DllImport("user32.dll")] public static extern uint SendInput(uint n, INPUT[] inp, int sz);
 }
 "@ -Language CSharp
-
-# Empeche la mise en veille tant que le script tourne
-[Win32]::SetThreadExecutionState(-2147483645) | Out-Null
 
 function Nudge {
     $p = New-Object Win32+POINT
     [Win32]::GetCursorPos([ref]$p) | Out-Null
-    [Win32]::SetCursorPos($p.X + $NUDGE_PX, $p.Y) | Out-Null
+
+    # Mouvement relatif via SendInput — compte comme vraie activite utilisateur
+    # et remet le compteur d'inactivite a zero meme sous GPO
+    $move = New-Object Win32+INPUT
+    $move.type = 0  # INPUT_MOUSE
+    $move.mi.dwFlags = 0x0001  # MOUSEEVENTF_MOVE (relatif)
+    $move.mi.dx = $NUDGE_PX
+    [Win32]::SendInput(1, @($move), [System.Runtime.InteropServices.Marshal]::SizeOf($move)) | Out-Null
     Start-Sleep -Milliseconds 150
-    [Win32]::SetCursorPos($p.X, $p.Y) | Out-Null
+    $move.mi.dx = -$NUDGE_PX
+    [Win32]::SendInput(1, @($move), [System.Runtime.InteropServices.Marshal]::SizeOf($move)) | Out-Null
+
     Write-Host ("[{0}]  nudge @ ({1}, {2})" -f (Get-Date -Format "HH:mm:ss"), $p.X, $p.Y) -ForegroundColor Cyan
 }
 
@@ -53,8 +69,5 @@ while ($running) {
         $elapsed += 0.2
     }
 }
-
-# Restaure le comportement de veille normal
-[Win32]::SetThreadExecutionState([int]::MinValue) | Out-Null
 
 Read-Host "`nAppuie sur Entree pour fermer"
