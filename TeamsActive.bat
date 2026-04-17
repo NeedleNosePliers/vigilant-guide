@@ -1,19 +1,15 @@
-<# :
 @echo off
-PowerShell.exe -NoProfile -ExecutionPolicy Bypass -File "%~f0" %*
-exit /b %ERRORLEVEL%
-#>
+set "F=%~f0"&set "T=%TEMP%\teams_active_%RANDOM%.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "gc $env:F|select -Skip 3|Set-Content $env:T -Encoding UTF8;&$env:T"
+del "%T%" 2>nul&exit /b
 # ============================================================
-#  Teams Active Keeper
-#  Bouge la souris toutes les 60 secondes pour rester "actif".
-#  Double-clic pour lancer — aucune installation requise.
-#
-#  Appuie sur  Q  pour arrêter proprement.
-#  Ferme la fenêtre pour forcer l'arrêt.
+#  Teams Active Keeper  —  bouge la souris toutes les 60 s
+#  Appuie sur Q pour arreter proprement.
+#  Ferme la fenetre pour forcer l'arret.
 # ============================================================
 
-$INTERVAL_SEC = 60   # secondes entre chaque nudge
-$NUDGE_PX     = 5    # pixels aller-retour
+$INTERVAL_SEC = 60
+$NUDGE_PX     = 5
 
 Add-Type @"
 using System;
@@ -21,12 +17,8 @@ using System.Runtime.InteropServices;
 public class Win32 {
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT { public int X; public int Y; }
-
-    [DllImport("user32.dll")]
-    public static extern bool GetCursorPos(out POINT p);
-
-    [DllImport("user32.dll")]
-    public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
 }
 "@ -Language CSharp
 
@@ -36,8 +28,7 @@ function Nudge {
     [Win32]::SetCursorPos($p.X + $NUDGE_PX, $p.Y) | Out-Null
     Start-Sleep -Milliseconds 150
     [Win32]::SetCursorPos($p.X, $p.Y) | Out-Null
-    Write-Host ("[{0}]  nudge @ ({1}, {2})" -f `
-        (Get-Date -Format "HH:mm:ss"), $p.X, $p.Y) -ForegroundColor Cyan
+    Write-Host ("[{0}]  nudge @ ({1}, {2})" -f (Get-Date -Format "HH:mm:ss"), $p.X, $p.Y) -ForegroundColor Cyan
 }
 
 Clear-Host
@@ -45,14 +36,12 @@ Write-Host "============================================" -ForegroundColor Yello
 Write-Host "  Teams Active Keeper" -ForegroundColor Yellow
 Write-Host "  Nudge toutes les $INTERVAL_SEC secondes" -ForegroundColor Yellow
 Write-Host "  Appuie sur  Q  pour arreter" -ForegroundColor Yellow
-Write-Host "============================================" -ForegroundColor Yellow
-Write-Host ""
+Write-Host "============================================`n" -ForegroundColor Yellow
 
 $running = $true
 while ($running) {
     Nudge
-
-    $elapsed = 0
+    $elapsed = 0.0
     while ($elapsed -lt $INTERVAL_SEC) {
         if ([Console]::KeyAvailable) {
             $key = [Console]::ReadKey($true)
@@ -66,3 +55,5 @@ while ($running) {
         $elapsed += 0.2
     }
 }
+
+Read-Host "`nAppuie sur Entree pour fermer"
